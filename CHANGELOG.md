@@ -6,6 +6,12 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+## [1.0.1] - 2025-05-28
+
+### Fixed
+
+- The plugin actually works now (command name mismatch)
+
 ## [1.0.0] - 2025-05-28
 
 ### Added

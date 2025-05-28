@@ -64,7 +64,7 @@ export function activate(context: vscode.ExtensionContext) {
   // open the dynamic document, and shows it in the next editor
   context.subscriptions.push(
     vscode.commands.registerTextEditorCommand(
-      "editor.printReferences",
+      "xrefs.findAllXrefs",
       async (editor) => {
         const references: vscode.Location[] =
           await vscode.commands.executeCommand(
