@@ -106,7 +106,7 @@ function renderReferences(
       { type: LineType; line: number; text: string }
     > = Object.create(null);
     let maxLine = 0;
-    for (const ref of refs) {
+    for (const ref of refs.slice(1)) {
       const space_before = Math.max(0, ref.range.start.line - LINES_BEFORE - 1);
       resultLines[space_before] = {
         type: "spacer",
@@ -152,7 +152,7 @@ function renderReferences(
           lines.push(`  ${pad(res.line + 1)}  ${res.text}`);
           break;
         case "reference":
-          lines.push(`  ${pad(res.line + 1)}:  ${res.text}`);
+          lines.push(`  ${pad(res.line + 1)}: ${res.text}`);
       }
     }
     lines.push("");
