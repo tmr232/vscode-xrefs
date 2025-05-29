@@ -96,18 +96,23 @@ function renderReferences(
 
     lines.push(`${path}:`);
     type LineType = "context" | "reference" | "spacer";
-    const resultLines: Map<
+    /*
+    For some odd reason, `new Map()` does not work in the remote extension host.
+    So instead of maps, we're using objects.
+    It's terrible, but it works.
+    */
+    const resultLines: Record<
       number,
       { type: LineType; line: number; text: string }
-    > = new Map();
+    > = Object.create(null);
     let maxLine = 0;
     for (const ref of refs) {
       const space_before = Math.max(0, ref.range.start.line - LINES_BEFORE - 1);
-      resultLines.set(space_before, {
+      resultLines[space_before] = {
         type: "spacer",
         line: space_before,
         text: "",
-      });
+      };
     }
     for (const ref of refs) {
       const before = Math.max(0, ref.range.start.line - LINES_BEFORE);
@@ -116,39 +121,38 @@ function renderReferences(
         ref.range.end.line + LINES_AFTER + 1,
       );
       for (let line = before; line < after; ++line) {
-        resultLines.set(line, {
+        resultLines[line] = {
           type: "context",
           line,
           text: editor.document.lineAt(line).text,
-        });
+        };
       }
 
       maxLine = Math.max(maxLine, after);
     }
     for (const ref of refs) {
       const line = ref.range.start.line;
-      resultLines.set(line, {
+      resultLines[line] = {
         type: "reference",
         line,
         text: editor.document.lineAt(line).text,
-      });
+      };
     }
 
-    const padCount = `${maxLine}`.length;
+    const padCount = `${maxLine + 1}`.length;
     const pad = (n: number) => `${n}`.padStart(padCount);
-    for (const res of resultLines
-      .values()
-      .toArray()
-      .toSorted((a, b) => a.line - b.line)) {
+    for (const res of Object.values(resultLines).toSorted(
+      (a, b) => a.line - b.line,
+    )) {
       switch (res.type) {
         case "spacer":
           lines.push("");
           break;
         case "context":
-          lines.push(`  ${pad(res.line)}  ${res.text}`);
+          lines.push(`  ${pad(res.line + 1)}  ${res.text}`);
           break;
         case "reference":
-          lines.push(`  ${pad(res.line)}:  ${res.text}`);
+          lines.push(`  ${pad(res.line + 1)}:  ${res.text}`);
       }
     }
     lines.push("");
