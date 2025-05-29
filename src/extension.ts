@@ -113,9 +113,9 @@ function renderReferences(
       const before = Math.max(0, ref.range.start.line - LINES_BEFORE);
       const after = Math.min(
         editor.document.lineCount,
-        ref.range.end.line + LINES_AFTER,
+        ref.range.end.line + LINES_AFTER + 1,
       );
-      for (let line = before; line <= after; ++line) {
+      for (let line = before; line < after; ++line) {
         resultLines.set(line, {
           type: "context",
           line,
