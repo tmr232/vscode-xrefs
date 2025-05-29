@@ -1,5 +1,6 @@
 {
   "main": "./dist/extension.cjs",
+  "browser": "./dist/extension.cjs",
   "module": "index.ts",
   "type": "module",
   "dependencies": {
