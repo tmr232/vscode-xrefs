@@ -6,6 +6,13 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+## [1.0.2] - 2025-05-29
+
+### Fixed
+
+- The extension now works with remote dev as well
+- Fixed line numbers
+
 ## [1.0.1] - 2025-05-28
 
 ### Fixed
