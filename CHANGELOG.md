@@ -6,6 +6,10 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+### Changed
+
+- Removed unnecessary whitespace from results, making them look nicer.
+
 ## [1.0.2] - 2025-05-29
 
 ### Fixed
