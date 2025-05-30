@@ -29,7 +29,10 @@ class StreamingFile {
   stream: AsyncGenerator<string, void, unknown>;
   onUpdate: () => void;
   private readonly chunks: string[] = [];
-  constructor(stream: AsyncGenerator<string>, onUpdate: () => void) {
+  constructor(
+    stream: AsyncGenerator<string, void, unknown>,
+    onUpdate: () => void,
+  ) {
     this.stream = stream;
     this.onUpdate = onUpdate;
   }
@@ -41,12 +44,18 @@ class StreamingFile {
     }
   }
 
+  stopStream() {
+    this.stream.return();
+  }
+
   get content() {
     return this.chunks.join("\n");
   }
 }
 
-class VirtualFileProvider implements vscode.TextDocumentContentProvider {
+class VirtualFileProvider
+  implements vscode.TextDocumentContentProvider, vscode.Disposable
+{
   scheme: string;
   private contentMap: Map<string, StreamingFile> = new Map();
   private index = 0;
@@ -68,15 +77,23 @@ class VirtualFileProvider implements vscode.TextDocumentContentProvider {
     return uri;
   }
   removeContent(uri: vscode.Uri) {
+    this.contentMap.get(uri.toString())?.stopStream();
     this.contentMap.delete(uri.toString());
   }
   provideTextDocumentContent(uri: vscode.Uri): vscode.ProviderResult<string> {
     return this.contentMap.get(uri.toString())?.content;
   }
+
+  dispose() {
+    for (const streamingFile of this.contentMap.values()) {
+      streamingFile.stopStream();
+    }
+  }
 }
 
 export function activate(context: vscode.ExtensionContext) {
   const fileProvider = new VirtualFileProvider("xrefs-result");
+  context.subscriptions.push(fileProvider);
   context.subscriptions.push(
     vscode.workspace.registerTextDocumentContentProvider(
       fileProvider.scheme,
