@@ -27,14 +27,14 @@ function groupByUri(
 
 class VirtualFileProvider implements vscode.TextDocumentContentProvider {
   scheme: string;
-  private contentMap: Map<string, string> = new Map();
+  private contentMap: Map<string, string | Promise<string>> = new Map();
   private index = 0;
 
   constructor(scheme: string) {
     this.scheme = scheme;
   }
 
-  addContent(content: string): vscode.Uri {
+  addContent(content: string | Promise<string>): vscode.Uri {
     const uri = vscode.Uri.parse(`${this.scheme}:${this.index++}.code-search`);
     this.contentMap.set(uri.toString(), content);
     return uri;
@@ -42,8 +42,19 @@ class VirtualFileProvider implements vscode.TextDocumentContentProvider {
   removeContent(uri: vscode.Uri) {
     this.contentMap.delete(uri.toString());
   }
-  provideTextDocumentContent(uri: vscode.Uri): string {
-    return this.contentMap.get(uri.toString()) ?? "Missing content!";
+  provideTextDocumentContent(uri: vscode.Uri): vscode.ProviderResult<string> {
+    const maybeContent = this.contentMap.get(uri.toString());
+    if (maybeContent === undefined) {
+      return undefined;
+    }
+    if (typeof maybeContent === "string") {
+      return maybeContent;
+    }
+    return (async () => {
+      const content = await maybeContent;
+      this.contentMap.set(uri.toString(), content);
+      return content;
+    })();
   }
 }
 
@@ -66,15 +77,20 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerTextEditorCommand(
       "xrefs.findAllXrefs",
       async (editor) => {
-        const references: vscode.Location[] =
-          await vscode.commands.executeCommand(
-            "vscode.executeReferenceProvider",
-            editor.document.uri,
-            editor.selection.active,
-          );
-
-        const content = renderReferences(references, editor);
-        const uri = fileProvider.addContent(content);
+        const getRefs = async () => {
+          const references: vscode.Location[] =
+            await vscode.commands.executeCommand(
+              "vscode.executeReferenceProvider",
+              editor.document.uri,
+              editor.selection.active,
+            );
+          if (references.length === 0) {
+            return "No xrefs found.";
+          }
+          const content = await renderReferences(references);
+          return content;
+        };
+        const uri = fileProvider.addContent(getRefs());
 
         await vscode.window.showTextDocument(uri, {
           viewColumn: (editor.viewColumn ?? 0) + 1,
@@ -83,12 +99,10 @@ export function activate(context: vscode.ExtensionContext) {
     ),
   );
 }
-function renderReferences(
-  references: vscode.Location[],
-  editor: vscode.TextEditor,
-) {
+async function renderReferences(references: vscode.Location[]) {
   const lines = [];
   for (const refGroup of groupByUri(references)) {
+    const doc = await vscode.workspace.openTextDocument(refGroup.uri);
     const refs = refGroup.locations.toSorted((a, b) =>
       a.range.start.compareTo(b.range.start),
     );
@@ -117,14 +131,15 @@ function renderReferences(
     for (const ref of refs) {
       const before = Math.max(0, ref.range.start.line - LINES_BEFORE);
       const after = Math.min(
-        editor.document.lineCount,
+        doc.lineCount,
         ref.range.end.line + LINES_AFTER + 1,
       );
       for (let line = before; line < after; ++line) {
+        console.log("Line", line);
         resultLines[line] = {
           type: "context",
           line,
-          text: editor.document.lineAt(line).text,
+          text: doc.lineAt(line).text,
         };
       }
 
@@ -132,10 +147,11 @@ function renderReferences(
     }
     for (const ref of refs) {
       const line = ref.range.start.line;
+      console.log("Line:", line);
       resultLines[line] = {
         type: "reference",
         line,
-        text: editor.document.lineAt(line).text,
+        text: doc.lineAt(line).text,
       };
     }
 
