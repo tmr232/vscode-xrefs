@@ -3,9 +3,9 @@ import * as vscode from "vscode";
 const LINES_BEFORE = 2;
 const LINES_AFTER = 2;
 
-function groupByUri(
-  locations: vscode.Location[],
-): { uri: vscode.Uri; locations: vscode.Location[] }[] {
+type ReferenceGroup = { uri: vscode.Uri; locations: vscode.Location[] };
+
+function groupByUri(locations: vscode.Location[]): ReferenceGroup[] {
   const results: { uri: vscode.Uri; locations: vscode.Location[] }[] = [];
   let uri: vscode.Uri | undefined;
   let locs: vscode.Location[] = [];
@@ -25,36 +25,53 @@ function groupByUri(
   return results;
 }
 
+class StreamingFile {
+  stream: AsyncGenerator<string, void, unknown>;
+  onUpdate: () => void;
+  private readonly chunks: string[] = [];
+  constructor(stream: AsyncGenerator<string>, onUpdate: () => void) {
+    this.stream = stream;
+    this.onUpdate = onUpdate;
+  }
+
+  async startStream() {
+    for await (const chunk of this.stream) {
+      this.chunks.push(chunk);
+      this.onUpdate();
+    }
+  }
+
+  get content() {
+    return this.chunks.join("\n");
+  }
+}
+
 class VirtualFileProvider implements vscode.TextDocumentContentProvider {
   scheme: string;
-  private contentMap: Map<string, string | Promise<string>> = new Map();
+  private contentMap: Map<string, StreamingFile> = new Map();
   private index = 0;
+  private emitter = new vscode.EventEmitter<vscode.Uri>();
+
+  readonly onDidChange = this.emitter.event;
 
   constructor(scheme: string) {
     this.scheme = scheme;
   }
 
-  addContent(content: string | Promise<string>): vscode.Uri {
+  addContent(contentStream: AsyncGenerator<string>): vscode.Uri {
     const uri = vscode.Uri.parse(`${this.scheme}:${this.index++}.code-search`);
-    this.contentMap.set(uri.toString(), content);
+    const streamingFile = new StreamingFile(contentStream, () =>
+      this.emitter.fire(uri),
+    );
+    this.contentMap.set(uri.toString(), streamingFile);
+    streamingFile.startStream();
     return uri;
   }
   removeContent(uri: vscode.Uri) {
     this.contentMap.delete(uri.toString());
   }
   provideTextDocumentContent(uri: vscode.Uri): vscode.ProviderResult<string> {
-    const maybeContent = this.contentMap.get(uri.toString());
-    if (maybeContent === undefined) {
-      return undefined;
-    }
-    if (typeof maybeContent === "string") {
-      return maybeContent;
-    }
-    return (async () => {
-      const content = await maybeContent;
-      this.contentMap.set(uri.toString(), content);
-      return content;
-    })();
+    return this.contentMap.get(uri.toString())?.content;
   }
 }
 
@@ -77,20 +94,15 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerTextEditorCommand(
       "xrefs.findAllXrefs",
       async (editor) => {
-        const getRefs = async () => {
-          const references: vscode.Location[] =
-            await vscode.commands.executeCommand(
+        const uri = fileProvider.addContent(
+          renderResults(
+            vscode.commands.executeCommand<vscode.Location[]>(
               "vscode.executeReferenceProvider",
               editor.document.uri,
               editor.selection.active,
-            );
-          if (references.length === 0) {
-            return "No xrefs found.";
-          }
-          const content = await renderReferences(references);
-          return content;
-        };
-        const uri = fileProvider.addContent(getRefs());
+            ),
+          ),
+        );
 
         await vscode.window.showTextDocument(uri, {
           viewColumn: (editor.viewColumn ?? 0) + 1,
@@ -99,80 +111,89 @@ export function activate(context: vscode.ExtensionContext) {
     ),
   );
 }
-async function renderReferences(references: vscode.Location[]) {
+
+async function* renderResults(
+  references: Thenable<vscode.Location[]>,
+): AsyncGenerator<string, void, unknown> {
+  const refs = await references;
+
+  const refGroups = groupByUri(refs);
+
+  yield `Found ${refs.length} xrefs in ${refGroups.length} files.\n`;
+
+  for (const refGroup of refGroups) {
+    yield renderReferenceGroup(refGroup);
+  }
+}
+async function renderReferenceGroup(refGroup: ReferenceGroup): Promise<string> {
+  const doc = await vscode.workspace.openTextDocument(refGroup.uri);
   const lines = [];
-  for (const refGroup of groupByUri(references)) {
-    const doc = await vscode.workspace.openTextDocument(refGroup.uri);
-    const refs = refGroup.locations.toSorted((a, b) =>
-      a.range.start.compareTo(b.range.start),
-    );
-    const path = refGroup.uri.fsPath;
+  const refs = refGroup.locations.toSorted((a, b) =>
+    a.range.start.compareTo(b.range.start),
+  );
+  const path = refGroup.uri.fsPath;
 
-    lines.push(`${path}:`);
-    type LineType = "context" | "reference" | "spacer";
-    /*
-    For some odd reason, `new Map()` does not work in the remote extension host.
-    So instead of maps, we're using objects.
-    It's terrible, but it works.
-    */
-    const resultLines: Record<
-      number,
-      { type: LineType; line: number; text: string }
-    > = Object.create(null);
-    let maxLine = 0;
-    for (const ref of refs.slice(1)) {
-      const space_before = Math.max(0, ref.range.start.line - LINES_BEFORE - 1);
-      resultLines[space_before] = {
-        type: "spacer",
-        line: space_before,
-        text: "",
-      };
-    }
-    for (const ref of refs) {
-      const before = Math.max(0, ref.range.start.line - LINES_BEFORE);
-      const after = Math.min(
-        doc.lineCount,
-        ref.range.end.line + LINES_AFTER + 1,
-      );
-      for (let line = before; line < after; ++line) {
-        console.log("Line", line);
-        resultLines[line] = {
-          type: "context",
-          line,
-          text: doc.lineAt(line).text,
-        };
-      }
-
-      maxLine = Math.max(maxLine, after);
-    }
-    for (const ref of refs) {
-      const line = ref.range.start.line;
-      console.log("Line:", line);
+  lines.push(`${path}:`);
+  type LineType = "context" | "reference" | "spacer";
+  /*
+  For some odd reason, `new Map()` does not work in the remote extension host.
+  So instead of maps, we're using objects.
+  It's terrible, but it works.
+  */
+  const resultLines: Record<
+    number,
+    { type: LineType; line: number; text: string }
+  > = Object.create(null);
+  let maxLine = 0;
+  for (const ref of refs.slice(1)) {
+    const space_before = Math.max(0, ref.range.start.line - LINES_BEFORE - 1);
+    resultLines[space_before] = {
+      type: "spacer",
+      line: space_before,
+      text: "",
+    };
+  }
+  for (const ref of refs) {
+    const before = Math.max(0, ref.range.start.line - LINES_BEFORE);
+    const after = Math.min(doc.lineCount, ref.range.end.line + LINES_AFTER + 1);
+    for (let line = before; line < after; ++line) {
+      console.log("Line", line);
       resultLines[line] = {
-        type: "reference",
+        type: "context",
         line,
         text: doc.lineAt(line).text,
       };
     }
 
-    const padCount = `${maxLine + 1}`.length;
-    const pad = (n: number) => `${n}`.padStart(padCount);
-    for (const res of Object.values(resultLines).toSorted(
-      (a, b) => a.line - b.line,
-    )) {
-      switch (res.type) {
-        case "spacer":
-          lines.push("");
-          break;
-        case "context":
-          lines.push(`  ${pad(res.line + 1)}  ${res.text}`);
-          break;
-        case "reference":
-          lines.push(`  ${pad(res.line + 1)}: ${res.text}`);
-      }
-    }
-    lines.push("");
+    maxLine = Math.max(maxLine, after);
   }
+  for (const ref of refs) {
+    const line = ref.range.start.line;
+    console.log("Line:", line);
+    resultLines[line] = {
+      type: "reference",
+      line,
+      text: doc.lineAt(line).text,
+    };
+  }
+
+  const padCount = `${maxLine + 1}`.length;
+  const pad = (n: number) => `${n}`.padStart(padCount);
+  for (const res of Object.values(resultLines).toSorted(
+    (a, b) => a.line - b.line,
+  )) {
+    switch (res.type) {
+      case "spacer":
+        lines.push("");
+        break;
+      case "context":
+        lines.push(`  ${pad(res.line + 1)}  ${res.text}`);
+        break;
+      case "reference":
+        lines.push(`  ${pad(res.line + 1)}: ${res.text}`);
+    }
+  }
+  lines.push("");
 
   const content = lines.join("\n");
   return content;
