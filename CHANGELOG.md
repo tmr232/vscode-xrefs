@@ -6,9 +6,16 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+## [1.0.3] - 2025-05-30
+
 ### Changed
 
 - Removed unnecessary whitespace from results, making them look nicer.
+- References are loaded incrementally
+
+### Fixed
+
+- Can now show refs from other files
 
 ## [1.0.2] - 2025-05-29
 
