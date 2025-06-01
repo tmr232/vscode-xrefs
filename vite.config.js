@@ -13,6 +13,7 @@ export default defineConfig({
     outDir: "dist",
     emptyOutDir: true,
     minify: false,
+    commonjsOptions: { transformMixedEsModules: true },
     rollupOptions: {
       input: "src/extension.ts",
       external: ["vscode"],

@@ -11,3 +11,5 @@ These are ideas I want to explore, no promises!
 - Differentiate reads from writes using tree-sitter, reflect that in the results
 - Consider adding a tree-view as a result option
 - Allow commenting on results or mark them as "ignored"
+
+Might be interseting to look at https://github.com/microsoft/vscode-anycode for providing tree-sitter.

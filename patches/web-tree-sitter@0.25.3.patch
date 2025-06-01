@@ -1,0 +1,42 @@
+diff --git a/node_modules/web-tree-sitter/.bun-tag-3faa921c32681cc8 b/.bun-tag-3faa921c32681cc8
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/tree-sitter.js b/tree-sitter.js
+index 95b93b910143fffa9a5dc9512b38aeab1a22c6c8..0d550a517d164d98ee4a31e49d914767957c0ad5 100644
+--- a/tree-sitter.js
++++ b/tree-sitter.js
+@@ -2035,7 +2035,7 @@ var Language = class _Language {
+       bytes = Promise.resolve(input);
+     } else {
+       if (globalThis.process?.versions.node) {
+-        const fs2 = __require("fs/promises");
++        const fs2 = await import("fs/promises");
+         bytes = fs2.readFile(input);
+       } else {
+         bytes = fetch(input).then((response) => response.arrayBuffer().then((buffer) => {
+@@ -2078,10 +2078,7 @@ var Module2 = (() => {
+     var ENVIRONMENT_IS_WORKER = typeof WorkerGlobalScope != "undefined";
+     var ENVIRONMENT_IS_NODE = typeof process == "object" && typeof process.versions == "object" && typeof process.versions.node == "string" && process.type != "renderer";
+     var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
+-    if (ENVIRONMENT_IS_NODE) {
+-      const { createRequire } = await import("module");
+-      var require = createRequire("/");
+-    }
++
+     Module.currentQueryProgressCallback = null;
+     Module.currentProgressCallback = null;
+     Module.currentLogCallback = null;
+@@ -2102,10 +2099,10 @@ var Module2 = (() => {
+     __name(locateFile, "locateFile");
+     var readAsync, readBinary;
+     if (ENVIRONMENT_IS_NODE) {
+-      var fs = require("fs");
+-      var nodePath = require("path");
++      var fs = await import("fs");
++      var nodePath = await import("path");
+       if (!import.meta.url.startsWith("data:")) {
+-        scriptDirectory = nodePath.dirname(require("url").fileURLToPath(import.meta.url)) + "/";
++        scriptDirectory = nodePath.dirname(await import("url").fileURLToPath(import.meta.url)) + "/";
+       }
+       readBinary = /* @__PURE__ */ __name((filename) => {
+         filename = isFileURI(filename) ? new URL(filename) : filename;

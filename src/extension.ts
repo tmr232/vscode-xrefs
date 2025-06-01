@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { Parser } from "web-tree-sitter";
 
 const LINES_BEFORE = 2;
 const LINES_AFTER = 2;
@@ -91,42 +92,58 @@ class VirtualFileProvider
   }
 }
 
-export function activate(context: vscode.ExtensionContext) {
-  const fileProvider = new VirtualFileProvider("xrefs-result");
-  context.subscriptions.push(fileProvider);
-  context.subscriptions.push(
-    vscode.workspace.registerTextDocumentContentProvider(
-      fileProvider.scheme,
-      fileProvider,
-    ),
+async function loadParser(context: vscode.ExtensionContext) {
+  const treeSitterWasmUri = vscode.Uri.joinPath(
+    context.extensionUri,
+    "./parsers/tree-sitter.wasm",
   );
-  context.subscriptions.push(
-    vscode.workspace.onDidCloseTextDocument((document) => {
-      fileProvider.removeContent(document.uri);
-    }),
-  );
-  // register command that crafts an uri with the `references` scheme,
-  // open the dynamic document, and shows it in the next editor
-  context.subscriptions.push(
-    vscode.commands.registerTextEditorCommand(
-      "xrefs.findAllXrefs",
-      async (editor) => {
-        const uri = fileProvider.addContent(
-          renderResults(
-            vscode.commands.executeCommand<vscode.Location[]>(
-              "vscode.executeReferenceProvider",
-              editor.document.uri,
-              editor.selection.active,
-            ),
-          ),
-        );
+  await Parser.init({
+    locateFile(_scriptName: string, _scriptDirectory: string) {
+      return treeSitterWasmUri;
+    },
+  });
+}
 
-        await vscode.window.showTextDocument(uri, {
-          viewColumn: (editor.viewColumn ?? 0) + 1,
-        });
-      },
-    ),
-  );
+export function activate(context: vscode.ExtensionContext) {
+  return (async () => {
+    console.log(await loadParser(context));
+
+    const fileProvider = new VirtualFileProvider("xrefs-result");
+    context.subscriptions.push(fileProvider);
+    context.subscriptions.push(
+      vscode.workspace.registerTextDocumentContentProvider(
+        fileProvider.scheme,
+        fileProvider,
+      ),
+    );
+    context.subscriptions.push(
+      vscode.workspace.onDidCloseTextDocument((document) => {
+        fileProvider.removeContent(document.uri);
+      }),
+    );
+    // register command that crafts an uri with the `references` scheme,
+    // open the dynamic document, and shows it in the next editor
+    context.subscriptions.push(
+      vscode.commands.registerTextEditorCommand(
+        "xrefs.findAllXrefs",
+        async (editor) => {
+          const uri = fileProvider.addContent(
+            renderResults(
+              vscode.commands.executeCommand<vscode.Location[]>(
+                "vscode.executeReferenceProvider",
+                editor.document.uri,
+                editor.selection.active,
+              ),
+            ),
+          );
+
+          await vscode.window.showTextDocument(uri, {
+            viewColumn: (editor.viewColumn ?? 0) + 1,
+          });
+        },
+      ),
+    );
+  })();
 }
 
 async function* renderResults(
