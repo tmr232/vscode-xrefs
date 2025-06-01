@@ -3,10 +3,10 @@
   "tasks": [
     {
       "type": "bun",
-      "script": "bun run --cwd ${workspaceFolder} build",
+      "script": "bun run --cwd ${workspaceFolder} ./scripts/build-with-esbuild.ts",
       "problemMatcher": [],
       "label": "bun: build",
-      "detail": "bun run build",
+      "detail": "bun run ./scripts/build-with-esbuild.ts - package.json",
       "group": {
         "kind": "build",
         "isDefault": true
