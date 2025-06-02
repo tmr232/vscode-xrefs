@@ -2,7 +2,7 @@
   "compilerOptions": {
     /* Most of our code runs in the browser, so we'll declare it as such for now */
     "lib": [
-      "es2020"
+      "es2023"
     ],
     "target": "es2020",
     "module": "node16",
