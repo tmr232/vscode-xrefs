@@ -26,9 +26,12 @@ function groupByUri(locations: vscode.Location[]): ReferenceGroup[] {
     return results;
 }
 
+export type XrefType = "read"|"write";
+export type XrefOptions = {onlyType?: XrefType};
+
 
 export async function* renderReferences(
-    references: Thenable<vscode.Location[]>,
+    references: Thenable<vscode.Location[]>, options?: XrefOptions,
 ): AsyncGenerator<string, void, unknown> {
     const refs = await references;
 
@@ -37,11 +40,11 @@ export async function* renderReferences(
     yield `Found ${refs.length} xrefs in ${refGroups.length} files.\n`;
 
     for (const refGroup of refGroups) {
-        yield renderReferenceGroup(refGroup);
+        yield renderReferenceGroup(refGroup, options);
     }
 }
 
-async function renderReferenceGroup(refGroup: ReferenceGroup): Promise<string> {
+async function renderReferenceGroup(refGroup: ReferenceGroup, options?:XrefOptions): Promise<string> {
     const doc = await vscode.workspace.openTextDocument(refGroup.uri);
     const lines = [];
     const refs:vscode.Location[] = refGroup.locations.toSorted((a, b) =>
@@ -61,6 +64,13 @@ async function renderReferenceGroup(refGroup: ReferenceGroup): Promise<string> {
         }
         console.log(isWrite(targetNode))
     }
+    const isRefWrite = (ref:vscode.Location) :boolean => {
+        const targetNode = tree.rootNode.descendantForPosition({row:ref.range.start.line, column:ref.range.start.character})
+        if (!targetNode) {
+            throw new Error("Could not find target node");
+        }
+        return isWrite(targetNode);
+    }
     lines.push(`${path}:`);
     type LineType = "context" | "reference" | "spacer";
     /*
@@ -73,7 +83,8 @@ async function renderReferenceGroup(refGroup: ReferenceGroup): Promise<string> {
         { type: LineType; line: number; text: string }
     > = Object.create(null);
     let maxLine = 0;
-    for (const ref of refs.slice(1)) {
+    const filteredRefs = refs.filter(isRefWrite)
+    for (const ref of filteredRefs.slice(1)) {
         const space_before = Math.max(0, ref.range.start.line - LINES_BEFORE - 1);
         resultLines[space_before] = {
             type: "spacer",
@@ -81,7 +92,7 @@ async function renderReferenceGroup(refGroup: ReferenceGroup): Promise<string> {
             text: "",
         };
     }
-    for (const ref of refs) {
+    for (const ref of filteredRefs) {
         const before = Math.max(0, ref.range.start.line - LINES_BEFORE);
         const after = Math.min(doc.lineCount, ref.range.end.line + LINES_AFTER + 1);
         for (let line = before; line < after; ++line) {
@@ -95,7 +106,7 @@ async function renderReferenceGroup(refGroup: ReferenceGroup): Promise<string> {
 
         maxLine = Math.max(maxLine, after);
     }
-    for (const ref of refs) {
+    for (const ref of filteredRefs) {
         const line = ref.range.start.line;
         console.log("Line:", line);
         resultLines[line] = {
