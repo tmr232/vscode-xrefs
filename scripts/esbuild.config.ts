@@ -19,6 +19,7 @@ const config: BuildOptions = {
   },
   logLevel: "info",
   sourcemap: "inline",
+  
 };
 
 export default config;

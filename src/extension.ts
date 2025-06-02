@@ -91,14 +91,20 @@ class VirtualFileProvider
   }
 }
 
-async function loadParser() {
-  await Parser.init();
+async function loadParser(context: vscode.ExtensionContext) {
+  await Parser.init(
+    {
+      locateFile() {
+        return vscode.Uri.joinPath(context.extensionUri, "./parsers/tree-sitter.wasm").fsPath
+      }
+    }
+  );
   return new Parser();
 }
 
 export function activate(context: vscode.ExtensionContext) {
   return (async () => {
-    const parser = await loadParser();
+    const parser = await loadParser(context);
     const language = await Language.load(vscode.Uri.joinPath(context.extensionUri, "./parsers/tree-sitter-python.wasm").fsPath);
     parser.setLanguage(language);
     console.log(parser.parse("a = 1"));
