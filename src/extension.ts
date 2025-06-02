@@ -1,25 +1,11 @@
 import * as vscode from "vscode";
-import {Language, Parser} from "web-tree-sitter";
 import {VirtualFileProvider} from "./virtualFileProvider.js";
 import {renderReferences} from "./references.js";
-
-async function loadParser(context: vscode.ExtensionContext) {
-  await Parser.init(
-    {
-      locateFile() {
-        return vscode.Uri.joinPath(context.extensionUri, "./parsers/tree-sitter.wasm").fsPath
-      }
-    }
-  );
-  return new Parser();
-}
+import {init as initParsers} from "./parser.js"
 
 export function activate(context: vscode.ExtensionContext) {
   return (async () => {
-    const parser = await loadParser(context);
-    const language = await Language.load(vscode.Uri.joinPath(context.extensionUri, "./parsers/tree-sitter-python.wasm").fsPath);
-    parser.setLanguage(language);
-    console.log(parser.parse("a = 1"));
+    await initParsers(context);
 
     const fileProvider = new VirtualFileProvider("xrefs-result");
     context.subscriptions.push(fileProvider);

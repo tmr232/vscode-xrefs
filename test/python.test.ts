@@ -1,7 +1,7 @@
 import path from "node:path";
 import {expect, test} from "vitest";
 import {Language, type Node, Parser, type Tree} from "web-tree-sitter";
-import {isWrite} from "../src/classifier";
+import {isWrite} from "../src/classifier.ts";
 
 async function loadParser(): Promise<Parser> {
   // await Parser.init();

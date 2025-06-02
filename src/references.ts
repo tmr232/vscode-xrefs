@@ -1,4 +1,6 @@
-import vscode from "vscode";
+import * as vscode from "vscode";
+import {getParser} from "./parser.js";
+import {isWrite} from "./classifier.js";
 
 const LINES_BEFORE = 2;
 const LINES_AFTER = 2;
@@ -24,6 +26,7 @@ function groupByUri(locations: vscode.Location[]): ReferenceGroup[] {
     return results;
 }
 
+
 export async function* renderReferences(
     references: Thenable<vscode.Location[]>,
 ): AsyncGenerator<string, void, unknown> {
@@ -41,11 +44,23 @@ export async function* renderReferences(
 async function renderReferenceGroup(refGroup: ReferenceGroup): Promise<string> {
     const doc = await vscode.workspace.openTextDocument(refGroup.uri);
     const lines = [];
-    const refs = refGroup.locations.toSorted((a, b) =>
+    const refs:vscode.Location[] = refGroup.locations.toSorted((a, b) =>
         a.range.start.compareTo(b.range.start),
     );
     const path = refGroup.uri.fsPath;
 
+    const parser = getParser();
+    const tree = parser.parse(doc.getText());
+    if (!tree) {
+        throw new Error("Could not parse document");
+    }
+    for (const ref of refs) {
+        const targetNode = tree.rootNode.descendantForPosition({row:ref.range.start.line, column:ref.range.start.character})
+        if (!targetNode) {
+            throw new Error("Could not find target node");
+        }
+        console.log(isWrite(targetNode))
+    }
     lines.push(`${path}:`);
     type LineType = "context" | "reference" | "spacer";
     /*

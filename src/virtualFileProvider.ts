@@ -1,4 +1,4 @@
-import vscode from "vscode";
+import * as vscode from "vscode";
 
 class StreamingFile {
     stream: AsyncGenerator<string, void, unknown>;
