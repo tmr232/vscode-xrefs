@@ -2,7 +2,7 @@ import path from "node:path";
 import { expect, test } from "vitest";
 import { Language, type Node, Parser, type Tree } from "web-tree-sitter";
 async function loadParser(): Promise<Parser> {
-  await Parser.init();
+  // await Parser.init();
   const wasmPath = path.join(
     process.cwd(),
     "./parsers/tree-sitter-python.wasm",

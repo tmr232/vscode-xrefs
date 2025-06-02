@@ -4,19 +4,21 @@ const config: BuildOptions = {
   entryPoints: ["./src/extension.ts"],
   bundle: true,
   platform: "node",
-  target: "node12",
+  target: "node16",
   outdir: "./dist",
   outbase: "./src",
+  packages: "bundle",
   outExtension: {
-    ".js": ".cjs",
+    ".js": ".js",
   },
-  format: "cjs",
+  format: "esm",
   external: ["vscode"],
   loader: {
     ".ts": "ts",
     ".js": "js",
   },
   logLevel: "info",
+  sourcemap: "inline",
 };
 
 export default config;

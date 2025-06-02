@@ -1,6 +1,42 @@
 diff --git a/node_modules/web-tree-sitter/.bun-tag-3faa921c32681cc8 b/.bun-tag-3faa921c32681cc8
 new file mode 100644
 index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/node_modules/web-tree-sitter/.bun-tag-b718cafa07c44a56 b/.bun-tag-b718cafa07c44a56
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/tree-sitter.cjs b/tree-sitter.cjs
+index 7c1503f273bab220c5f42868343e1b0657c2d6c9..4b0eeef9166bd7d65395f4e9fcbe21bc6f1e5d38 100644
+--- a/tree-sitter.cjs
++++ b/tree-sitter.cjs
+@@ -38,7 +38,7 @@ var require_tree_sitter = __commonJS({
+     var Module = (() => {
+       var _scriptName = typeof document != "undefined" ? document.currentScript?.src : void 0;
+       if (typeof __filename != "undefined") _scriptName = _scriptName || __filename;
+-      return async function(moduleArg = {}) {
++      return async function (moduleArg = {}) {
+         var moduleRtn;
+         var Module = moduleArg;
+         var readyPromiseResolve, readyPromiseReject;
+@@ -72,8 +72,8 @@ var require_tree_sitter = __commonJS({
+         __name(locateFile, "locateFile");
+         var readAsync, readBinary;
+         if (ENVIRONMENT_IS_NODE) {
+-          var fs = require("fs");
+-          var nodePath = require("path");
++          var fs = await import("fs");
++          var nodePath = await import("path");
+           scriptDirectory = __dirname + "/";
+           readBinary = /* @__PURE__ */ __name((filename) => {
+             filename = isFileURI(filename) ? new URL(filename) : filename;
+@@ -3785,7 +3785,7 @@ var Language = class _Language {
+       bytes = Promise.resolve(input);
+     } else {
+       if (globalThis.process?.versions.node) {
+-        const fs2 = require("fs/promises");
++        const fs2 = await import("fs/promises");
+         bytes = fs2.readFile(input);
+       } else {
+         bytes = fetch(input).then((response) => response.arrayBuffer().then((buffer) => {
 diff --git a/tree-sitter.js b/tree-sitter.js
 index 95b93b910143fffa9a5dc9512b38aeab1a22c6c8..0d550a517d164d98ee4a31e49d914767957c0ad5 100644
 --- a/tree-sitter.js

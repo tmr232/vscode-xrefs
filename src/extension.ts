@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { Parser } from "web-tree-sitter";
+import { Language, Parser } from "web-tree-sitter";
 
 const LINES_BEFORE = 2;
 const LINES_AFTER = 2;
@@ -55,8 +55,7 @@ class StreamingFile {
 }
 
 class VirtualFileProvider
-  implements vscode.TextDocumentContentProvider, vscode.Disposable
-{
+  implements vscode.TextDocumentContentProvider, vscode.Disposable {
   scheme: string;
   private contentMap: Map<string, StreamingFile> = new Map();
   private index = 0;
@@ -92,21 +91,17 @@ class VirtualFileProvider
   }
 }
 
-async function loadParser(context: vscode.ExtensionContext) {
-  const treeSitterWasmUri = vscode.Uri.joinPath(
-    context.extensionUri,
-    "./parsers/tree-sitter.wasm",
-  );
-  await Parser.init({
-    locateFile(_scriptName: string, _scriptDirectory: string) {
-      return treeSitterWasmUri;
-    },
-  });
+async function loadParser() {
+  await Parser.init();
+  return new Parser();
 }
 
 export function activate(context: vscode.ExtensionContext) {
   return (async () => {
-    console.log(await loadParser(context));
+    const parser = await loadParser();
+    const language = await Language.load(vscode.Uri.joinPath(context.extensionUri, "./parsers/tree-sitter-python.wasm").fsPath);
+    parser.setLanguage(language);
+    console.log(parser.parse("a = 1"));
 
     const fileProvider = new VirtualFileProvider("xrefs-result");
     context.subscriptions.push(fileProvider);
