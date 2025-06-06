@@ -1,9 +1,7 @@
 {
   "compilerOptions": {
     /* Most of our code runs in the browser, so we'll declare it as such for now */
-    "lib": [
-      "es2023"
-    ],
+    "lib": ["es2023"],
     "target": "es2020",
     "module": "node16",
     "moduleDetection": "force",
@@ -24,16 +22,8 @@
     "noImplicitReturns": true,
     "forceConsistentCasingInFileNames": true,
     "paths": {
-      "vscode": [
-        "./mocks/vscode.ts"
-      ]
+      "vscode": ["./mocks/vscode.ts"]
     }
   },
-  "exclude": [
-    "./dist"
-  ],
-  "include": [
-    "src/**/*.ts",
-    "eslint.config.js"
-  ]
+  "exclude": ["./dist"]
 }

@@ -1,7 +1,29 @@
 import * as vscode from "vscode";
-import {StreamingFile, VirtualFileProvider} from "./virtualFileProvider.js";
-import {renderReferences, XrefsFile} from "./references.js";
-import {init as initParsers} from "./parser.js"
+import { init as initParsers } from "./parser.js";
+import { type XrefOptions, XrefsFile } from "./references.js";
+import { VirtualFileProvider } from "./virtualFileProvider.js";
+
+function buildXrefsCommand(
+  fileProvider: VirtualFileProvider,
+  options?: XrefOptions,
+) {
+  return async (editor: vscode.TextEditor) => {
+    const uri = fileProvider.addContent(
+      new XrefsFile(
+        vscode.commands.executeCommand<vscode.Location[]>(
+          "vscode.executeReferenceProvider",
+          editor.document.uri,
+          editor.selection.active,
+        ),
+        options,
+      ),
+    );
+
+    await vscode.window.showTextDocument(uri, {
+      viewColumn: (editor.viewColumn ?? 0) + 1,
+    });
+  };
+}
 
 export function activate(context: vscode.ExtensionContext) {
   return (async () => {
@@ -20,29 +42,19 @@ export function activate(context: vscode.ExtensionContext) {
         fileProvider.removeContent(document.uri);
       }),
     );
-    // register command that crafts an uri with the `references` scheme,
-    // open the dynamic document, and shows it in the next editor
+
     context.subscriptions.push(
       vscode.commands.registerTextEditorCommand(
         "xrefs.findAllXrefs",
-        async (editor) => {
-          const uri = fileProvider.addContent(
-            new XrefsFile(
-              vscode.commands.executeCommand<vscode.Location[]>(
-                "vscode.executeReferenceProvider",
-                editor.document.uri,
-                editor.selection.active,
-              ),
-                {onlyType:"write"}
-            ),
-          );
+        buildXrefsCommand(fileProvider),
+      ),
+    );
 
-          await vscode.window.showTextDocument(uri, {
-            viewColumn: (editor.viewColumn ?? 0) + 1,
-          });
-        },
+    context.subscriptions.push(
+      vscode.commands.registerTextEditorCommand(
+        "xrefs.findWriteXrefs",
+        buildXrefsCommand(fileProvider, { onlyType: "write" }),
       ),
     );
   })();
 }
-

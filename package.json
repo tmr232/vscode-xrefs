@@ -58,12 +58,18 @@
       {
         "command": "xrefs.findAllXrefs",
         "title": "Find Xrefs"
-      }
+      },
+      { "command": "xrefs.findWriteXrefs", "title": "Find Write-Xrefs" }
     ],
     "menus": {
       "editor/context": [
         {
           "command": "xrefs.findAllXrefs",
+          "when": "editorHasReferenceProvider",
+          "group": "0_navigation@42"
+        },
+        {
+          "command": "xrefs.findWriteXrefs",
           "when": "editorHasReferenceProvider",
           "group": "0_navigation@42"
         }
