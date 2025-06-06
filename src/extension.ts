@@ -56,5 +56,17 @@ export function activate(context: vscode.ExtensionContext) {
         buildXrefsCommand(fileProvider, { onlyType: "write" }),
       ),
     );
+    context.subscriptions.push(
+      vscode.commands.registerTextEditorCommand(
+        "xrefs.findReadXrefs",
+        buildXrefsCommand(fileProvider, { onlyType: "read" }),
+      ),
+    );
+    context.subscriptions.push(
+      vscode.commands.registerTextEditorCommand(
+        "xrefs.findImportXrefs",
+        buildXrefsCommand(fileProvider, { onlyType: "import" }),
+      ),
+    );
   })();
 }

@@ -6,6 +6,13 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+## [1.2.0] - 2025-06-06
+
+### Added
+
+- Find read and import xrefs
+- Only show xref menu items and commands for supported languages
+
 ## [1.1.0] - 2025-06-06
 
 ### Added

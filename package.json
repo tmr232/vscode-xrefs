@@ -42,7 +42,7 @@
   "//": "START EXTENSION ATTRIBUTES",
   "publisher": "tamir-bahar",
   "name": "xrefs",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "XRefs",
   "displayName": "XRefs",
   "categories": [],
@@ -56,9 +56,24 @@
     "commands": [
       {
         "command": "xrefs.findAllXrefs",
-        "title": "Find Xrefs"
+        "title": "Find Xrefs",
+        "enablement": "editorHasReferenceProvider"
       },
-      { "command": "xrefs.findWriteXrefs", "title": "Find Write-Xrefs" }
+      {
+        "command": "xrefs.findWriteXrefs",
+        "title": "Find Write-Xrefs",
+        "enablement": "editorHasReferenceProvider && editorLangId == 'python'"
+      },
+      {
+        "command": "xrefs.findReadXrefs",
+        "title": "Find Read-Xrefs",
+        "enablement": "editorHasReferenceProvider && editorLangId == 'python'"
+      },
+      {
+        "command": "xrefs.findImportXrefs",
+        "title": "Find Import-Xrefs",
+        "enablement": "editorHasReferenceProvider && editorLangId == 'python'"
+      }
     ],
     "menus": {
       "editor/context": [
@@ -69,8 +84,13 @@
         },
         {
           "command": "xrefs.findWriteXrefs",
-          "when": "editorHasReferenceProvider",
-          "group": "0_navigation@42"
+          "when": "editorHasReferenceProvider && editorLangId == 'python'",
+          "group": "0_navigation@43"
+        },
+        {
+          "command": "xrefs.findReadXrefs",
+          "when": "editorHasReferenceProvider && editorLangId == 'python'",
+          "group": "0_navigation@44"
         }
       ]
     }
