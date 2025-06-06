@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { isWrite } from "./classifier.js";
+import { getXrefType } from "./classifier.js";
 import { getParser } from "./parser.js";
 import type { UpdatingFile } from "./virtualFileProvider.js";
 
@@ -27,7 +27,7 @@ function groupByUri(locations: vscode.Location[]): ReferenceGroup[] {
   return results;
 }
 
-export type XrefType = "read" | "write";
+export type XrefType = "read" | "write" | "import";
 export type XrefOptions = { onlyType?: XrefType };
 
 export async function* renderReferences(
@@ -121,7 +121,7 @@ async function filterReferences(
   refGroup: ReferenceGroup,
   options?: XrefOptions,
 ): Promise<ReferenceGroup> {
-  if (!options) {
+  if (!options?.onlyType) {
     return { uri: refGroup.uri, locations: [...refGroup.locations] };
   }
   const doc = await vscode.workspace.openTextDocument(refGroup.uri);
@@ -130,23 +130,17 @@ async function filterReferences(
   if (!tree) {
     throw new Error("Could not parse document");
   }
-  const filter: (ref: vscode.Location) => boolean = (() => {
-    switch (options.onlyType) {
-      case "write":
-        return (ref: vscode.Location) => {
-          const targetNode = tree.rootNode.descendantForPosition({
-            row: ref.range.start.line,
-            column: ref.range.start.character,
-          });
-          if (!targetNode) {
-            throw new Error("Could not find target node");
-          }
-          return isWrite(targetNode);
-        };
-      default:
-        throw new Error("Not implemented!");
+  const filter = (ref: vscode.Location): boolean => {
+    const targetNode = tree.rootNode.descendantForPosition({
+      row: ref.range.start.line,
+      column: ref.range.start.character,
+    });
+    if (!targetNode) {
+      throw new Error("Could not find target node");
     }
-  })();
+
+    return getXrefType(targetNode) === options.onlyType;
+  };
 
   return { uri: refGroup.uri, locations: refGroup.locations.filter(filter) };
 }
@@ -189,6 +183,7 @@ export class XrefsFile implements UpdatingFile {
       onUpdate();
     }
     this.done = true;
+    onUpdate();
   }
 
   stop(): void {

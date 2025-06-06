@@ -1,7 +1,8 @@
 import path from "node:path";
 import { expect, test } from "vitest";
 import { Language, type Node, Parser, type Tree } from "web-tree-sitter";
-import { isWrite } from "../src/classifier.ts";
+import { isImport, isRead, isWrite } from "../src/classifier.ts";
+import type { XrefType } from "../src/references.js";
 
 async function loadParser(): Promise<Parser> {
   await Parser.init();
@@ -44,38 +45,43 @@ test("Find variable in sample", async () => {
   expect(node.type).toEqual("identifier");
 });
 
-test.each([
-  ["a = 2", true],
-  ["b = a", false],
-  ["x = a = 3", true],
-  ["a.x = 2", false],
-  ["s[a] = 3", false],
-  ["a, b = l", true],
-  ["x.a = 1", true],
-  ["x[2].a = 1", true],
-  ["a[1] = 2", true],
-  ["f(a)", false],
-])("is a written to in %s ?", (code, expected) => {
-  const { node } = parseSample(code, "a");
-  expect(isWrite(node)).toEqual(expected);
-});
+const testCases: { code: string; xrefType: XrefType }[] = [
+  { code: "a = 2", xrefType: "write" },
+  { code: "b = a", xrefType: "read" },
+  { code: "x = a = 3", xrefType: "write" },
+  { code: "a.x = 2", xrefType: "write" },
+  { code: "s[a] = 3", xrefType: "read" },
+  { code: "a, b = l", xrefType: "write" },
+  { code: "x.a = 1", xrefType: "write" },
+  { code: "x[2].a = 1", xrefType: "write" },
+  { code: "a[1] = 2", xrefType: "write" },
+  { code: "f(a)", xrefType: "read" },
+  { code: "import a", xrefType: "import" },
+  { code: "import x.a", xrefType: "import" },
+  { code: "import a.x", xrefType: "import" },
+  { code: "if (a := 2): pass", xrefType: "write" },
+  { code: "if (x := a): pass", xrefType: "read" },
+];
 
-// test.each([
-//   ["a = 2", false],
-//   ["b = a", true],
-//   ["x = a = 3", false],
-//   ["a.x = 2", false],
-//   ["s[a] = 3", true],
-//   ["a, b = l", false],
-//   ["x.a = 1", false],
-//   ["x[2].a = 1", false],
-//   ["a[1] = 2", false],
-//   ["f(a)", true],
-//     ["a()", true],
-//     ["a.b", true],
-//     ["a", true],
-//     ["a[1]", true],
-// ])("is a read from in %s ?", (code, expected) => {
-//   const { node } = parseSample(code, "a");
-//   expect(isRead(node)).toEqual(expected);
-// });
+test.each(testCases)(
+  "$xrefType-xref for a in ($code)",
+  ({ code, xrefType }) => {
+    const { node } = parseSample(code, "a");
+    const w = isWrite(node);
+    const r = isRead(node);
+    const i = isImport(node);
+    expect([w, r, i].filter(Boolean).length).toStrictEqual(1);
+
+    switch (xrefType) {
+      case "read":
+        expect(r).toEqual(true);
+        break;
+      case "write":
+        expect(w).toEqual(true);
+        break;
+      case "import":
+        expect(i).toEqual(true);
+        break;
+    }
+  },
+);
