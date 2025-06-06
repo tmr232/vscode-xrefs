@@ -18,7 +18,7 @@
     "eslint": "^9.12.0",
     "oxlint": "0.15.13",
     "tree-sitter-python": "^0.23.6",
-    "typescript-eslint": "^8.16.0",
+    "typescript-eslint": "^8.33.1",
     "vite": "^6.3.5",
     "vitest": "^3.1.4"
   },
