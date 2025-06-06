@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import {StreamingFile, VirtualFileProvider} from "./virtualFileProvider.js";
-import {renderReferences} from "./references.js";
+import {renderReferences, XrefsFile} from "./references.js";
 import {init as initParsers} from "./parser.js"
 
 export function activate(context: vscode.ExtensionContext) {
@@ -27,13 +27,14 @@ export function activate(context: vscode.ExtensionContext) {
         "xrefs.findAllXrefs",
         async (editor) => {
           const uri = fileProvider.addContent(
-            new StreamingFile(renderReferences(
+            new XrefsFile(
               vscode.commands.executeCommand<vscode.Location[]>(
                 "vscode.executeReferenceProvider",
                 editor.document.uri,
                 editor.selection.active,
               ),
-            )),
+                {onlyType:"write"}
+            ),
           );
 
           await vscode.window.showTextDocument(uri, {

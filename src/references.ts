@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import {getParser} from "./parser.js";
 import {isWrite} from "./classifier.js";
+import type {UpdatingFile} from "./virtualFileProvider.js";
 
 const LINES_BEFORE = 2;
 const LINES_AFTER = 2;
@@ -26,12 +27,12 @@ function groupByUri(locations: vscode.Location[]): ReferenceGroup[] {
     return results;
 }
 
-export type XrefType = "read"|"write";
-export type XrefOptions = {onlyType?: XrefType};
+export type XrefType = "read" | "write";
+export type XrefOptions = { onlyType?: XrefType };
 
 
 export async function* renderReferences(
-    references: Thenable<vscode.Location[]>, options?: XrefOptions,
+    references: Thenable<vscode.Location[]>,
 ): AsyncGenerator<string, void, unknown> {
     const refs = await references;
 
@@ -40,37 +41,18 @@ export async function* renderReferences(
     yield `Found ${refs.length} xrefs in ${refGroups.length} files.\n`;
 
     for (const refGroup of refGroups) {
-        yield renderReferenceGroup(refGroup, options);
+        yield renderReferenceGroup(refGroup);
     }
 }
 
-async function renderReferenceGroup(refGroup: ReferenceGroup, options?:XrefOptions): Promise<string> {
+async function renderReferenceGroup(refGroup: ReferenceGroup): Promise<string> {
     const doc = await vscode.workspace.openTextDocument(refGroup.uri);
     const lines = [];
-    const refs:vscode.Location[] = refGroup.locations.toSorted((a, b) =>
+    const refs = refGroup.locations.toSorted((a, b) =>
         a.range.start.compareTo(b.range.start),
     );
     const path = refGroup.uri.fsPath;
 
-    const parser = getParser();
-    const tree = parser.parse(doc.getText());
-    if (!tree) {
-        throw new Error("Could not parse document");
-    }
-    for (const ref of refs) {
-        const targetNode = tree.rootNode.descendantForPosition({row:ref.range.start.line, column:ref.range.start.character})
-        if (!targetNode) {
-            throw new Error("Could not find target node");
-        }
-        console.log(isWrite(targetNode))
-    }
-    const isRefWrite = (ref:vscode.Location) :boolean => {
-        const targetNode = tree.rootNode.descendantForPosition({row:ref.range.start.line, column:ref.range.start.character})
-        if (!targetNode) {
-            throw new Error("Could not find target node");
-        }
-        return isWrite(targetNode);
-    }
     lines.push(`${path}:`);
     type LineType = "context" | "reference" | "spacer";
     /*
@@ -83,8 +65,7 @@ async function renderReferenceGroup(refGroup: ReferenceGroup, options?:XrefOptio
         { type: LineType; line: number; text: string }
     > = Object.create(null);
     let maxLine = 0;
-    const filteredRefs = refs.filter(isRefWrite)
-    for (const ref of filteredRefs.slice(1)) {
+    for (const ref of refs.slice(1)) {
         const space_before = Math.max(0, ref.range.start.line - LINES_BEFORE - 1);
         resultLines[space_before] = {
             type: "spacer",
@@ -92,7 +73,7 @@ async function renderReferenceGroup(refGroup: ReferenceGroup, options?:XrefOptio
             text: "",
         };
     }
-    for (const ref of filteredRefs) {
+    for (const ref of refs) {
         const before = Math.max(0, ref.range.start.line - LINES_BEFORE);
         const after = Math.min(doc.lineCount, ref.range.end.line + LINES_AFTER + 1);
         for (let line = before; line < after; ++line) {
@@ -106,7 +87,7 @@ async function renderReferenceGroup(refGroup: ReferenceGroup, options?:XrefOptio
 
         maxLine = Math.max(maxLine, after);
     }
-    for (const ref of filteredRefs) {
+    for (const ref of refs) {
         const line = ref.range.start.line;
         console.log("Line:", line);
         resultLines[line] = {
@@ -135,4 +116,93 @@ async function renderReferenceGroup(refGroup: ReferenceGroup, options?:XrefOptio
     lines.push("");
 
     return lines.join("\n");
+}
+
+async function filterReferences(refGroup: ReferenceGroup, options?: XrefOptions): Promise<ReferenceGroup> {
+    if (!options) {
+        return {uri: refGroup.uri, locations: [...refGroup.locations]};
+    }
+    const doc = await vscode.workspace.openTextDocument(refGroup.uri);
+    const parser = getParser();
+    const tree = parser.parse(doc.getText());
+    if (!tree) {
+        throw new Error("Could not parse document");
+    }
+    const filter: (ref: vscode.Location) => boolean = (() => {
+        switch (options.onlyType) {
+            case "write":
+                return (ref: vscode.Location) => {
+                    const targetNode = tree.rootNode.descendantForPosition({
+                        row: ref.range.start.line,
+                        column: ref.range.start.character
+                    })
+                    if (!targetNode) {
+                        throw new Error("Could not find target node");
+                    }
+                    return isWrite(targetNode);
+                }
+            default:
+                throw new Error("Not implemented!");
+        }
+    })();
+
+    return {uri: refGroup.uri, locations: refGroup.locations.filter(filter)};
+}
+
+export class XrefsFile implements UpdatingFile {
+    readonly references: Thenable<vscode.Location[]>;
+    readonly options: XrefOptions | undefined;
+    private headerStats?:{files:number, refs:number} = undefined;
+    private done = false;
+    private shouldStop = false;
+    private renderedRefs:string[] = [];
+
+    constructor(references: Thenable<vscode.Location[]>, options?: XrefOptions) {
+        this.references = references;
+        this.options = options;
+    }
+
+    async start(onUpdate: () => void): Promise<void> {
+        const refs = await this.references;
+        const refGroups = groupByUri(refs);
+
+        if (!this.options) {
+            this.headerStats = {files:refGroups.length, refs:refs.length};
+        } else {
+            this.headerStats = {files:0, refs:0};
+        }
+        onUpdate();
+
+        for (const refGroup of refGroups) {
+            if (this.shouldStop) {break;}
+            const filtered = await filterReferences(refGroup, this.options);
+            if (filtered.locations.length> 0) {
+                this.headerStats.files+= 1;
+                this.headerStats.refs += filtered.locations.length;
+            }
+            const renderedGroup = await renderReferenceGroup(filtered);
+            this.renderedRefs.push(renderedGroup);
+            onUpdate();
+        }
+        this.done = true;
+    }
+
+    stop(): void {
+        this.shouldStop = true;
+    }
+
+    get content(): string {
+        if (!this.headerStats) {return "";}
+
+        const parts:string[] = []
+            parts.push(`Found ${this.headerStats.refs} xrefs in ${this.headerStats.files} files.\n`)
+        if (!this.done) {
+            parts.push("Searching for more...");
+        }
+
+        parts.push(...this.renderedRefs)
+
+        return parts.join("\n");
+    }
+
 }
