@@ -3,6 +3,7 @@
   "tasks": [
     {
       "type": "bun",
+      // "script": "bun run --cwd ${workspaceFolder} vite build",
       "script": "bun run --cwd ${workspaceFolder} ./scripts/build-with-esbuild.ts",
       "problemMatcher": [],
       "label": "bun: build",

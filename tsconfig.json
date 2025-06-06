@@ -1,14 +1,13 @@
 {
   "compilerOptions": {
     /* Most of our code runs in the browser, so we'll declare it as such for now */
-    "lib": ["ESNext", "DOM"],
-    "target": "ESNext",
-    "module": "ESNext",
+    "lib": ["es2023"],
+    "target": "es2020",
+    "module": "node16",
     "moduleDetection": "force",
-    "jsx": "react-jsx",
     "allowJs": true,
     /* Bundler mode */
-    "moduleResolution": "bundler",
+    "moduleResolution": "node16",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "noEmit": true,
@@ -26,11 +25,5 @@
       "vscode": ["./mocks/vscode.ts"]
     }
   },
-  "exclude": [
-    "./webview-content",
-    "./dist",
-    "./src/components/lightdark.ts",
-    "src/test/commentTestSamples",
-    "src/demo/src/assets"
-  ]
+  "exclude": ["./dist"]
 }
