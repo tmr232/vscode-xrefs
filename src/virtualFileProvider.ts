@@ -1,26 +1,32 @@
 import * as vscode from "vscode";
 
-class StreamingFile {
+
+export interface UpdatingFile {
+    readonly content: string;
+
+    start(onUpdate:()=>void): Promise<void>;
+
+    stop(): void;
+}
+
+export class StreamingFile implements UpdatingFile {
     stream: AsyncGenerator<string, void, unknown>;
-    onUpdate: () => void;
     private readonly chunks: string[] = [];
 
     constructor(
         stream: AsyncGenerator<string, void, unknown>,
-        onUpdate: () => void,
     ) {
         this.stream = stream;
-        this.onUpdate = onUpdate;
     }
 
-    async startStream() {
+    async start(onUpdate:()=>void) {
         for await (const chunk of this.stream) {
             this.chunks.push(chunk);
-            this.onUpdate();
+            onUpdate();
         }
     }
 
-    stopStream() {
+    stop() {
         this.stream.return();
     }
 
@@ -32,7 +38,7 @@ class StreamingFile {
 export class VirtualFileProvider
     implements vscode.TextDocumentContentProvider, vscode.Disposable {
     scheme: string;
-    private contentMap: Map<string, StreamingFile> = new Map();
+    private contentMap: Map<string, UpdatingFile> = new Map();
     private index = 0;
     private emitter = new vscode.EventEmitter<vscode.Uri>();
 
@@ -42,18 +48,17 @@ export class VirtualFileProvider
         this.scheme = scheme;
     }
 
-    addContent(contentStream: AsyncGenerator<string>): vscode.Uri {
+    addContent(updatingFile: UpdatingFile): vscode.Uri {
         const uri = vscode.Uri.parse(`${this.scheme}:${this.index++}.code-search`);
-        const streamingFile = new StreamingFile(contentStream, () =>
-            this.emitter.fire(uri),
+        this.contentMap.set(uri.toString(), updatingFile);
+        updatingFile.start(() =>
+            this.emitter.fire(uri)
         );
-        this.contentMap.set(uri.toString(), streamingFile);
-        streamingFile.startStream();
         return uri;
     }
 
     removeContent(uri: vscode.Uri) {
-        this.contentMap.get(uri.toString())?.stopStream();
+        this.contentMap.get(uri.toString())?.stop();
         this.contentMap.delete(uri.toString());
     }
 
@@ -63,7 +68,7 @@ export class VirtualFileProvider
 
     dispose() {
         for (const streamingFile of this.contentMap.values()) {
-            streamingFile.stopStream();
+            streamingFile.stop();
         }
     }
 }
