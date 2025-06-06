@@ -4,7 +4,7 @@ import { Language, type Node, Parser, type Tree } from "web-tree-sitter";
 import { isWrite } from "../src/classifier.ts";
 
 async function loadParser(): Promise<Parser> {
-  // await Parser.init();
+  await Parser.init();
   const wasmPath = path.join(
     process.cwd(),
     "./parsers/tree-sitter-python.wasm",
@@ -59,3 +59,23 @@ test.each([
   const { node } = parseSample(code, "a");
   expect(isWrite(node)).toEqual(expected);
 });
+
+// test.each([
+//   ["a = 2", false],
+//   ["b = a", true],
+//   ["x = a = 3", false],
+//   ["a.x = 2", false],
+//   ["s[a] = 3", true],
+//   ["a, b = l", false],
+//   ["x.a = 1", false],
+//   ["x[2].a = 1", false],
+//   ["a[1] = 2", false],
+//   ["f(a)", true],
+//     ["a()", true],
+//     ["a.b", true],
+//     ["a", true],
+//     ["a[1]", true],
+// ])("is a read from in %s ?", (code, expected) => {
+//   const { node } = parseSample(code, "a");
+//   expect(isRead(node)).toEqual(expected);
+// });
