@@ -1,5 +1,5 @@
 {
-  "main": "./dist/extension.js",
+  "main": "./dist/extension.cjs",
   "module": "index.ts",
   "type": "module",
   "dependencies": {

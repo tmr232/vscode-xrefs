@@ -9,7 +9,7 @@ const config: BuildOptions = {
   outbase: "./src",
   packages: "bundle",
   outExtension: {
-    ".js": ".js",
+    ".js": ".cjs",
   },
   format: "cjs",
   external: ["vscode"],
