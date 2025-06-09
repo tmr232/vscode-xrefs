@@ -11,7 +11,7 @@ const config: BuildOptions = {
   outExtension: {
     ".js": ".js",
   },
-  format: "esm",
+  format: "cjs",
   external: ["vscode"],
   loader: {
     ".ts": "ts",
