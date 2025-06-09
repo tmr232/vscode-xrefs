@@ -1,17 +1,9 @@
 import * as vscode from "vscode";
 import { Language, Parser } from "web-tree-sitter";
-
 const languages: { python?: Language } = {};
 
 export async function init(context: vscode.ExtensionContext) {
-  await Parser.init({
-    locateFile() {
-      return vscode.Uri.joinPath(
-        context.extensionUri,
-        "./parsers/tree-sitter.wasm",
-      ).fsPath;
-    },
-  });
+  await Parser.init();
   const language = await Language.load(
     vscode.Uri.joinPath(
       context.extensionUri,
