@@ -9,9 +9,9 @@ const config: BuildOptions = {
   outbase: "./src",
   packages: "bundle",
   outExtension: {
-    ".js": ".cjs",
+    ".js": ".js",
   },
-  format: "cjs",
+  format: "esm",
   external: ["vscode"],
   loader: {
     ".ts": "ts",

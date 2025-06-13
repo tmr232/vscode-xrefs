@@ -1,14 +1,14 @@
 {
-  "main": "./dist/extension.cjs",
+  "main": "./dist/extension.js",
   "module": "index.ts",
   "type": "module",
   "dependencies": {
     "@types/vscode": "^1.94.0",
-    "@vscode/vsce": "^3.1.1",
-    "esbuild": "^0.25.0",
     "web-tree-sitter": "0.25.4"
   },
   "devDependencies": {
+    "@vscode/vsce": "^3.1.1",
+    "esbuild": "^0.25.0",
     "@biomejs/biome": "1.9.4",
     "@eslint/js": "^9.28.0",
     "@rollup/plugin-wasm": "^6.2.2",
@@ -100,6 +100,7 @@
     "vscode": "^1.86.0"
   },
   "patchedDependencies": {
-    "web-tree-sitter@0.25.3": "patches/web-tree-sitter@0.25.3.patch"
+    "web-tree-sitter@0.25.3": "patches/web-tree-sitter@0.25.3.patch",
+    "web-tree-sitter@0.25.4": "patches/web-tree-sitter@0.25.4.patch"
   }
 }
