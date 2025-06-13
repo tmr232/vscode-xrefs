@@ -25,48 +25,46 @@ function buildXrefsCommand(
   };
 }
 
-export function activate(context: vscode.ExtensionContext) {
-  return (async () => {
-    await initParsers(context);
+export async function activate(context: vscode.ExtensionContext) {
+  await initParsers(context);
 
-    const fileProvider = new VirtualFileProvider("xrefs-result");
-    context.subscriptions.push(fileProvider);
-    context.subscriptions.push(
-      vscode.workspace.registerTextDocumentContentProvider(
-        fileProvider.scheme,
-        fileProvider,
-      ),
-    );
-    context.subscriptions.push(
-      vscode.workspace.onDidCloseTextDocument((document) => {
-        fileProvider.removeContent(document.uri);
-      }),
-    );
+  const fileProvider = new VirtualFileProvider("xrefs-result");
+  context.subscriptions.push(fileProvider);
+  context.subscriptions.push(
+    vscode.workspace.registerTextDocumentContentProvider(
+      fileProvider.scheme,
+      fileProvider,
+    ),
+  );
+  context.subscriptions.push(
+    vscode.workspace.onDidCloseTextDocument((document) => {
+      fileProvider.removeContent(document.uri);
+    }),
+  );
 
-    context.subscriptions.push(
-      vscode.commands.registerTextEditorCommand(
-        "xrefs.findAllXrefs",
-        buildXrefsCommand(fileProvider),
-      ),
-    );
+  context.subscriptions.push(
+    vscode.commands.registerTextEditorCommand(
+      "xrefs.findAllXrefs",
+      buildXrefsCommand(fileProvider),
+    ),
+  );
 
-    context.subscriptions.push(
-      vscode.commands.registerTextEditorCommand(
-        "xrefs.findWriteXrefs",
-        buildXrefsCommand(fileProvider, { onlyType: "write" }),
-      ),
-    );
-    context.subscriptions.push(
-      vscode.commands.registerTextEditorCommand(
-        "xrefs.findReadXrefs",
-        buildXrefsCommand(fileProvider, { onlyType: "read" }),
-      ),
-    );
-    context.subscriptions.push(
-      vscode.commands.registerTextEditorCommand(
-        "xrefs.findImportXrefs",
-        buildXrefsCommand(fileProvider, { onlyType: "import" }),
-      ),
-    );
-  })();
+  context.subscriptions.push(
+    vscode.commands.registerTextEditorCommand(
+      "xrefs.findWriteXrefs",
+      buildXrefsCommand(fileProvider, { onlyType: "write" }),
+    ),
+  );
+  context.subscriptions.push(
+    vscode.commands.registerTextEditorCommand(
+      "xrefs.findReadXrefs",
+      buildXrefsCommand(fileProvider, { onlyType: "read" }),
+    ),
+  );
+  context.subscriptions.push(
+    vscode.commands.registerTextEditorCommand(
+      "xrefs.findImportXrefs",
+      buildXrefsCommand(fileProvider, { onlyType: "import" }),
+    ),
+  );
 }

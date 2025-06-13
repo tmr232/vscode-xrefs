@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 import { $ } from "bun";
 
 function isString(value: unknown): value is string {
-  return typeof value === "string" || value instanceof String;
+  return typeof value === "string";
 }
 
 type Location = { package: string; name: string };
