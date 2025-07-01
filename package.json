@@ -3,7 +3,7 @@
   "module": "index.ts",
   "type": "module",
   "dependencies": {
-    "@types/vscode": "^1.94.0",
+    "@types/vscode": "^1.101.0",
     "web-tree-sitter": "0.25.4"
   },
   "devDependencies": {
